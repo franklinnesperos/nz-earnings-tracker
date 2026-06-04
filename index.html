@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NZ Earnings & Leave Tracker</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #16a085; --bg: #f5f7fa; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: var(--bg); margin: 0; padding: 15px; display: flex; justify-content: center; }
+        .container { background: white; width: 100%; max-width: 700px; padding: 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); box-sizing: border-box; }
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+        .header h2 { margin: 0; color: var(--primary); font-size: 22px; text-transform: uppercase; }
+        .rate-config { background: #edf2f7; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; }
+        .rate-config input { width: 80px; padding: 5px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px; }
+        .entry-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .entry-row div { flex: 1; min-width: 120px; display: flex; flex-direction: column; }
+        .entry-row label { font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 4px; text-transform: uppercase; }
+        input[type="date"], input[type="number"] { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; font-weight: 600; box-sizing: border-box; }
+        .btn-add { background: var(--accent); color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: 700; cursor: pointer; width: 100%; margin-bottom: 20px; }
+        .summary-box { background: linear-gradient(135deg, #1e293b, #0f172a); color: white; padding: 20px; border-radius: 12px; margin-top: 10px; }
+        .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        @media(max-width: 480px) { .summary-grid { grid-template-columns: 1fr; } }
+        .summary-card { background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; border-left: 4px solid #38bdf8; }
+        .summary-card.leave { border-left-color: #34d399; }
+        .summary-card h4 { margin: 0; font-size: 12px; color: #94a3b8; text-transform: uppercase; }
+        .summary-card p { margin: 5px 0 0 0; font-size: 20px; font-weight: 700; font-family: monospace; }
+        .btn-clear { background: #f1f5f9; color: #64748b; border: none; padding: 8px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 15px; width: 100%; }
+        .remove-btn { background: #ef4444; color: white; border: none; border-radius: 6px; padding: 8px; cursor: pointer; font-weight: bold; margin-top: auto; height: 38px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>NZ Earnings & Leave Tracker</h2>
+    </div>
+
+    <div class="rate-config">
+        <label>Hourly Rate (NZD):</label>
+        <input type="number" id="hourlyRate" value="30.00" step="0.50" oninput="calculateTotals()">
+    </div>
+
+    <div id="entriesContainer">
+        </div>
+
+    <button class="btn-add" onclick="addNewRow()">+ Magdagdag ng Bagong Petsa</button>
+
+    <div class="summary-box">
+        <div class="summary-grid">
+            <div class="summary-card">
+                <h4>Total Gross Income</h4>
+                <p id="totalGross">$0.00</p>
+            </div>
+            <div class="summary-card leave">
+                <h4>Annual Leave (8% NZD)</h4>
+                <p id="totalLeaveNZD">$0.00</p>
+                <h4 style="margin-top: 10px;">Equivalent Hours</h4>
+                <p id="totalLeaveHours" style="color: #34d399;">0.00 hrs</p>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn-clear" onclick="clearAll()">Reset Tracker</button>
+</div>
+
+<script>
+    // Mag-load ng saved data mula sa phone memory para hindi mawala kapag na-refresh
+    let trackerData = JSON.parse(localStorage.getItem('nz_earnings_data')) || [
+        { date: new Date().toISOString().split('T')[0], gross: "" }
+    ];
+
+    function saveToStorage() {
+        localStorage.setItem('nz_earnings_data', JSON.stringify(trackerData));
+    }
+
+    function renderRows() {
+        const container = document.getElementById('entriesContainer');
+        container.innerHTML = "";
+        
+        trackerData.forEach((item, index) => {
+            const row = document.createElement('div');
+            row.className = 'entry-row';
+            row.innerHTML = `
+                <div>
+                    <label>Petsa / Date</label>
+                    <input type="date" value="${item.date}" onchange="updateData(${index}, 'date', this.value)">
+                </div>
+                <div>
+                    <label>Gross Income (NZD)</label>
+                    <input type="number" value="${item.gross}" placeholder="0.00" step="0.01" oninput="updateData(${index}, 'gross', this.value)">
+                </div>
+                ${trackerData.length > 1 ? `<button class="remove-btn" onclick="removeRow(${index})">X</button>` : ''}
+            `;
+            container.appendChild(row);
+        });
+        calculateTotals();
+    }
+
+    function addNewRow() {
+        const lastDate = trackerData[trackerData.length - 1]?.date || new Date().toISOString().split('T')[0];
+        trackerData.push({ date: lastDate, gross: "" });
+        saveToStorage();
+        renderRows();
+    }
+
+    function removeRow(index) {
+        trackerData.splice(index, 1);
+        saveToStorage();
+        renderRows();
+    }
+
+    function updateData(index, field, value) {
+        trackerData[index][field] = value;
+        saveToStorage();
+        calculateTotals();
+    }
+
+    function formatNZD(amount) {
+        return "$" + amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function calculateTotals() {
+        let totalGross = 0;
+        const rate = parseFloat(document.getElementById('hourlyRate').value) || 30;
+
+        trackerData.forEach(item => {
+            totalGross += parseFloat(item.gross) || 0;
+        });
+
+        // Holiday Pay / Annual Leave Law sa NZ: Standard 8% ng gross earnings
+        const leaveNZD = totalGross * 0.08;
+        const leaveHours = leaveNZD / rate;
+
+        document.getElementById('totalGross').innerText = formatNZD(totalGross);
+        document.getElementById('totalLeaveNZD').innerText = formatNZD(leaveNZD);
+        document.getElementById('totalLeaveHours').innerText = leaveHours.toFixed(2) + " hrs";
+    }
+
+    function clearAll() {
+        if(confirm("Sigurado ka bang nais mong burahin lahat ng entry?")) {
+            trackerData = [{ date: new Date().toISOString().split('T')[0], gross: "" }];
+            saveToStorage();
+            renderRows();
+        }
+    }
+
+    // Unang bukas ng app
+    renderRows();
+</script>
+
+</body>
+</html>
