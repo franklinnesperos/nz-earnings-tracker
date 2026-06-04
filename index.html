@@ -37,7 +37,7 @@
 
     <div class="rate-config">
         <label>Hourly Rate (NZD):</label>
-        <input type="number" id="hourlyRate" value="30.00" step="0.50" oninput="calculateTotals()">
+        <input type="number" id="hourlyRate" value="29.66" step="0.01" oninput="calculateTotals()">
     </div>
 
     <div id="entriesContainer">
@@ -64,7 +64,6 @@
 </div>
 
 <script>
-    // Mag-load ng saved data mula sa phone memory para hindi mawala kapag na-refresh
     let trackerData = JSON.parse(localStorage.getItem('nz_earnings_data')) || [
         { date: new Date().toISOString().split('T')[0], gross: "" }
     ];
@@ -121,13 +120,12 @@
 
     function calculateTotals() {
         let totalGross = 0;
-        const rate = parseFloat(document.getElementById('hourlyRate').value) || 30;
+        const rate = parseFloat(document.getElementById('hourlyRate').value) || 29.66;
 
         trackerData.forEach(item => {
             totalGross += parseFloat(item.gross) || 0;
         });
 
-        // Holiday Pay / Annual Leave Law sa NZ: Standard 8% ng gross earnings
         const leaveNZD = totalGross * 0.08;
         const leaveHours = leaveNZD / rate;
 
@@ -144,7 +142,6 @@
         }
     }
 
-    // Unang bukas ng app
     renderRows();
 </script>
 
