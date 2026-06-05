@@ -7,21 +7,22 @@
     <style>
         :root { --primary: #2c3e50; --accent: #16a085; --bg: #f5f7fa; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; justify-content: center; }
-        .container { background: white; width: 100%; max-width: 800px; padding: 15px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); box-sizing: border-box; }
+        .container { background: white; width: 100%; max-width: 850px; padding: 15px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); box-sizing: border-box; }
         .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
         .header h2 { margin: 0; color: var(--primary); font-size: 20px; text-transform: uppercase; }
         .rate-config { background: #edf2f7; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; }
         .rate-config input { width: 80px; padding: 6px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 700; }
         
         .table-wrapper { overflow-x: auto; margin-bottom: 15px; }
-        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; min-width: 550px; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; min-width: 600px; }
         th { background: #475569; color: white; padding: 10px; font-weight: 600; text-transform: uppercase; font-size: 11px; }
         td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
         
-        .date-box { display: flex; gap: 4px; }
+        .date-box { display: flex; gap: 4px; align-items: center; }
         select, input[type="number"] { padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; font-weight: 600; box-sizing: border-box; }
         select { background: white; width: 65px; }
         .day-input { width: 45px; text-align: center; }
+        .year-input { width: 60px; text-align: center; }
         .gross-input { width: 100%; }
         
         .live-cell { font-family: monospace; font-weight: 700; color: #334155; font-size: 14px; }
@@ -44,24 +45,27 @@
         <h2>NZ Earnings & Leave Tracker</h2>
     </div>
 
+    <!-- Hourly Rate Config -->
     <div class="rate-config">
         <label>Hourly Rate (NZD):</label>
         <input type="number" id="hourlyRate" value="29.66" step="0.01" oninput="calculateTotals()">
     </div>
 
+    <!-- Main Table Layout -->
     <div class="table-wrapper">
         <table>
             <thead>
                 <tr>
-                    <th style="width: 25%;">Buwan at Araw</th>
+                    <th style="width: 30%;">Petsa / Date (Month Day, Year)</th>
                     <th style="width: 25%;">Gross Income</th>
                     <th style="width: 20%;">Annual Leave (8%)</th>
-                    <th style="width: 20%;">Oras / Hours</th>
+                    <th style="width: 15%;">Oras / Hours</th>
                     <th style="width: 10%;"></th>
                 </tr>
             </thead>
             <tbody id="tableBody">
-                </tbody>
+                <!-- Dito papasok ang mga entries ng cut-off -->
+            </tbody>
             <tfoot>
                 <tr class="total-row-style">
                     <td><span class="total-label">KABUUANG TOTAL:</span></td>
@@ -81,17 +85,19 @@
 <script>
     const shortMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     
-    // Kumuha ng default short month ngayon para sa bagong row
-    const currentMonthText = shortMonths[new Date().getMonth()];
-    const currentDayNum = new Date().getDate();
+    // Kumuha ng default petsa ngayon para sa bagong row
+    const currentDate = new Date();
+    const currentMonthText = shortMonths[currentDate.getMonth()];
+    const currentDayNum = currentDate.getDate();
+    const currentYearNum = currentDate.getFullYear(); // Awtomatikong 2026
 
     // Load saved data
-    let trackerData = JSON.parse(localStorage.getItem('nz_earnings_shortdate_data')) || [
-        { month: currentMonthText, day: currentDayNum, gross: "" }
+    let trackerData = JSON.parse(localStorage.getItem('nz_earnings_year_data')) || [
+        { month: currentMonthText, day: currentDayNum, year: currentYearNum, gross: "" }
     ];
 
     function saveToStorage() {
-        localStorage.setItem('nz_earnings_shortdate_data', JSON.stringify(trackerData));
+        localStorage.setItem('nz_earnings_year_data', JSON.stringify(trackerData));
     }
 
     function formatNZD(amount) {
@@ -123,7 +129,8 @@
                         <select onchange="updateData(${index}, 'month', this.value)">
                             ${monthOptions}
                         </select>
-                        <input type="number" class="day-input" value="${item.day}" min="1" max="31" placeholder="Day" oninput="updateData(${index}, 'day', this.value)">
+                        <input type="number" class="day-input" value="${item.day}" min="1" max="31" placeholder="DD" oninput="updateData(${index}, 'day', this.value)">
+                        <input type="number" class="year-input" value="${item.year}" min="2020" max="2100" placeholder="YYYY" oninput="updateData(${index}, 'year', this.value)">
                     </div>
                 </td>
                 <td>
@@ -144,7 +151,8 @@
     function addNewRow() {
         const lastMonth = trackerData[trackerData.length - 1]?.month || currentMonthText;
         const lastDay = trackerData[trackerData.length - 1]?.day || currentDayNum;
-        trackerData.push({ month: lastMonth, day: lastDay, gross: "" });
+        const lastYear = trackerData[trackerData.length - 1]?.year || currentYearNum;
+        trackerData.push({ month: lastMonth, day: lastDay, year: lastYear, gross: "" });
         saveToStorage();
         renderTable();
     }
@@ -191,7 +199,7 @@
 
     function clearAll() {
         if(confirm("Sigurado ka bang nais mong burahin lahat ng entry?")) {
-            trackerData = [{ month: currentMonthText, day: currentDayNum, gross: "" }];
+            trackerData = [{ month: currentMonthText, day: currentDayNum, year: currentYearNum, gross: "" }];
             saveToStorage();
             renderTable();
         }
