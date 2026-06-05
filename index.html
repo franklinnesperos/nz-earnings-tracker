@@ -18,12 +18,22 @@
         th { background: #475569; color: white; padding: 10px; font-weight: 600; text-transform: uppercase; font-size: 11px; }
         td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
         
-        .date-box { display: flex; gap: 4px; align-items: center; }
-        select, input[type="number"] { padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; font-weight: 600; box-sizing: border-box; }
-        select { background: white; width: 65px; }
-        .day-input { width: 45px; text-align: center; }
-        .year-input { width: 60px; text-align: center; }
-        .gross-input { width: 100%; }
+        /* Pinadaling Date Input Style */
+        input[type="date"] { 
+            padding: 6px; 
+            border: 1px solid #cbd5e1; 
+            border-radius: 4px; 
+            font-size: 13px; 
+            font-weight: 600; 
+            font-family: inherit;
+            background: white;
+            color: #2c3e50;
+            width: 100%;
+            max-width: 160px;
+            box-sizing: border-box;
+        }
+        
+        input[type="number"].gross-input { width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; font-weight: 600; box-sizing: border-box; }
         
         .live-cell { font-family: monospace; font-weight: 700; color: #334155; font-size: 14px; }
         .hours-cell { color: #16a085; }
@@ -56,7 +66,7 @@
         <table>
             <thead>
                 <tr>
-                    <th style="width: 30%;">Petsa / Date (Month Day, Year)</th>
+                    <th style="width: 30%;">Petsa / Date</th>
                     <th style="width: 25%;">Gross Income</th>
                     <th style="width: 20%;">Annual Leave (8%)</th>
                     <th style="width: 15%;">Oras / Hours</th>
@@ -83,21 +93,19 @@
 </div>
 
 <script>
+    // Standard 3-letter month converter
     const shortMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     
-    // Kumuha ng default petsa ngayon para sa bagong row
-    const currentDate = new Date();
-    const currentMonthText = shortMonths[currentDate.getMonth()];
-    const currentDayNum = currentDate.getDate();
-    const currentYearNum = currentDate.getFullYear(); // Awtomatikong 2026
+    // Default date ngayon para sa unang bukas
+    const todayISO = new Date().toISOString().split('T')[0];
 
-    // Load saved data
-    let trackerData = JSON.parse(localStorage.getItem('nz_earnings_year_data')) || [
-        { month: currentMonthText, day: currentDayNum, year: currentYearNum, gross: "" }
+    // Load saved data mula sa local storage
+    let trackerData = JSON.parse(localStorage.getItem('nz_earnings_easydate_data')) || [
+        { rawDate: todayISO, gross: "" }
     ];
 
     function saveToStorage() {
-        localStorage.setItem('nz_earnings_year_data', JSON.stringify(trackerData));
+        localStorage.setItem('nz_earnings_easydate_data', JSON.stringify(trackerData));
     }
 
     function formatNZD(amount) {
@@ -115,23 +123,11 @@
             const leaveNZD = grossNum * 0.08;
             const leaveHours = leaveNZD / rate;
 
-            // Gumawa ng mga opsyon para sa 3-letter months
-            let monthOptions = "";
-            shortMonths.forEach(m => {
-                const selected = item.month === m ? "selected" : "";
-                monthOptions += `<option value="${m}" ${selected}>${m}</option>`;
-            });
-
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>
-                    <div class="date-box">
-                        <select onchange="updateData(${index}, 'month', this.value)">
-                            ${monthOptions}
-                        </select>
-                        <input type="number" class="day-input" value="${item.day}" min="1" max="31" placeholder="DD" oninput="updateData(${index}, 'day', this.value)">
-                        <input type="number" class="year-input" value="${item.year}" min="2020" max="2100" placeholder="YYYY" oninput="updateData(${index}, 'year', this.value)">
-                    </div>
+                    <!-- Isang input lang pero lalabas ang kalendaryo ng phone kapag pinindot -->
+                    <input type="date" value="${item.rawDate}" onchange="updateData(${index}, 'rawDate', this.value)">
                 </td>
                 <td>
                     <input type="number" class="gross-input" value="${item.gross}" placeholder="0.00" step="0.01" oninput="updateData(${index}, 'gross', this.value)">
@@ -149,10 +145,9 @@
     }
 
     function addNewRow() {
-        const lastMonth = trackerData[trackerData.length - 1]?.month || currentMonthText;
-        const lastDay = trackerData[trackerData.length - 1]?.day || currentDayNum;
-        const lastYear = trackerData[trackerData.length - 1]?.year || currentYearNum;
-        trackerData.push({ month: lastMonth, day: lastDay, year: lastYear, gross: "" });
+        // Kopyahin ang huling petsang ginamit para hindi na magsimula uli sa malayo
+        const lastDate = trackerData[trackerData.length - 1]?.rawDate || todayISO;
+        trackerData.push({ rawDate: lastDate, gross: "" });
         saveToStorage();
         renderTable();
     }
@@ -199,7 +194,7 @@
 
     function clearAll() {
         if(confirm("Sigurado ka bang nais mong burahin lahat ng entry?")) {
-            trackerData = [{ month: currentMonthText, day: currentDayNum, year: currentYearNum, gross: "" }];
+            trackerData = [{ rawDate: todayISO, gross: "" }];
             saveToStorage();
             renderTable();
         }
